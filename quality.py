@@ -146,7 +146,7 @@ def commonPlotting(user_data, user_id, prefix, xlim=None):
 def getBarColour(data):
     colors = []
     for value in data:
-        if value == 1.0:
+        if value[1] >= 1.0:
             colors.append('g')
         else:
             colors.append('r')
@@ -164,12 +164,18 @@ def plotWeekData(user_data, user_id):
     commonPlotting(user_data, user_id, 'week_', xlim)
     
 def plotRandomDays(user_data, user_id):
+    r = randint(0, len(getDaysList(user_data)))
+    idx = []
+    idx.append(r)
+    idx.append(r * 3 % len(user_data))
+    idx.append(r * 6 % len(user_data))
+    
     for i in xrange(0, 3):
-        [user_data1, xlim] = getDayData(user_data)
+        [user_data1, xlim] = getDayData(user_data, idx[i])
         x = [date2num(date) for (date, value) in user_data1]
         y = [value for (date, value) in user_data1]
         
-        colors = getBarColour(y)
+        colors = getBarColour(user_data1)
         pl.figure()
         pl.subplot(111)
         pl.bar(x,y,width=0.035, color=colors)
@@ -192,11 +198,8 @@ def getDaysList(user_data):
             temp_scan = scan
     return day_list
         
-def getDayData(user_data):
-    #print "day", len(getDaysList(user_data))
-    r = randint(0, len(getDaysList(user_data)))
-    #print r
-    tempScan = user_data[r]
+def getDayData(user_data, idx):
+    tempScan = user_data[idx]
     scan_list = []
     for scan in user_data:
         if scan[0].year == tempScan[0].year and scan[0].month == tempScan[0].month and scan[0].day == tempScan[0].day:           
@@ -217,12 +220,23 @@ def getWeekData(data):
           
 def getMonthData(data):
     end_date = data[-1][0] - timedelta(days = 7)
-    begin_date = end_date - timedelta(days = 37)
+    begin_date = end_date - timedelta(days = 30)
     res = []
     for (key, val) in data:
         if key <= end_date and key > begin_date:
             res.append((key, val))
     return [res, [begin_date + timedelta(days = 1), end_date + timedelta(days = 1)]]
+    
+def calcStats(user_data):
+    stats = []
+    all_data = [data[1] for data in user_data]
+    week_data = [data[1] for data in getWeekData(user_data)[0]] 
+    month_data = [data[1] for data in getMonthData(user_data)[0]] 
+    delta = user_data[-1][0] - user_data[0][0]
+    stats.append(sum(all_data) / delta.days)
+    stats.append(sum(month_data) / 30.0)
+    stats.append(sum(week_data) / 7.0)
+    return stats
     
 USER_ID = "a6ad00ac113a19d953efb91820d878"
 #DELTA = 300 # 5 mins
@@ -233,6 +247,7 @@ users_list = getUsersList()
 deltaDF = pandas.DataFrame()
 
 i = 0
+stats = []
 
 for single_user in users_list:
     i = i + 1
@@ -248,17 +263,18 @@ for single_user in users_list:
 #        writer = csv.writer(f)
 #        writer.writerows(qualityHour)    
     
-#qualityDay = getQualityDay(single_user, 1)
+    qualityDay = getQualityDay(single_user, 1)
     
     #with open(single_user + "_qualityDay.csv", 'wb') as f:
     #    writer = csv.writer(f)
     #    writer.writerows(qualityDay)
     
-    #plotAllData(qualityDay, user_name)
-    #plotMonthData(qualityDay, user_name)
-    #plotWeekData(qualityDay, user_name)
-    
+    plotAllData(qualityDay, user_name)
+    plotMonthData(qualityDay, user_name)
+    plotWeekData(qualityDay, user_name)
+#    
     plotRandomDays(qualityHour, user_name)
+    stats.append([user_name, calcStats(qualityDay)])
     
 #   single_user_data = getUserData(single_user)
 #   single_user_timestamp = getTimestamp(single_user_data) 
@@ -269,8 +285,10 @@ for single_user in users_list:
 #   with open(single_user + ".csv", 'wb') as f:
 #       writer = csv.writer(f)
 #       writer.writerows(delta_list2)  
-    
-    
+
+with open("stats.csv", 'wb') as f:
+    writer = csv.writer(f)
+    writer.writerows(stats)
     
     
     
