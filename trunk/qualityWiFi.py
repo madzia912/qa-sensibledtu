@@ -29,7 +29,7 @@ MAX_GRADE = 1.0
 USER = 'magda'
 PWD = 'lokus1?'
 HOST = 'localhost'
-DB = 'edu_mit_media_funf_probe_builtin_BluetoothProbe'
+DB = 'edu_mit_media_funf_probe_builtin_WifiProbe'
     
 def getUserData(db, user_id):
     cur= db.cursor()
@@ -40,7 +40,7 @@ def getUserData(db, user_id):
     
 def getUsersList(db):
     cur = db.cursor()
-    cur.execute('SELECT DISTINCT(user) FROM researcher')
+    cur.execute('SELECT DISTINCT(user) FROM researcher limit 100')
     result = cur.fetchall()
     cur.close()
     return result
@@ -213,6 +213,7 @@ def plotRandomDays(db, user_id, user_name):
 
 db = MySQLdb.connect(host = HOST, user = USER, passwd=PWD, db = DB)
 users_list = getUsersList(db)
+print "Got users list."
 
 user_idx = 0
 #stats = []
@@ -221,29 +222,34 @@ for single_user in users_list:
 
     user_idx = user_idx + 1
     user_name = "user" + str(user_idx)
-
-    [first_timestamp, last_timestamp] = getLastWeekTimestamps(db, single_user[0])
-    qualityHour = getQualityHour(db, single_user[0], first_timestamp, last_timestamp, 1)
-
-    with open(user_name + "_qualityHourLastWeek.csv", 'wb') as f:
-        writer = csv.writer(f)
-        writer.writerows(qualityHour)    
+    print user_name
     
-    [first_timestamp, last_timestamp] = getLastMonthTimestamps(db, single_user[0])
-    qualityHour = getQualityHour(db, single_user[0], first_timestamp, last_timestamp, 1)
-
-    with open(user_name + "_qualityHourLastMonth.csv", 'wb') as f:
-        writer = csv.writer(f)
-        writer.writerows(qualityHour) 
+#        [first_timestamp, last_timestamp] = getLastWeekTimestamps(db, single_user[0])
+#        qualityHour = getQualityHour(db, single_user[0], first_timestamp, last_timestamp, 1)
+#    
+#        with open(user_name + "_qualityHourLastWeek.csv", 'wb') as f:
+#            writer = csv.writer(f)
+#            writer.writerows(qualityHour)    
         
+#        [first_timestamp, last_timestamp] = getLastMonthTimestamps(db, single_user[0])
+#        qualityHour = getQualityHour(db, single_user[0], first_timestamp, last_timestamp, 1)
+#    
+#        with open(user_name + "_qualityHourLastMonth.csv", 'wb') as f:
+#            writer = csv.writer(f)
+#            writer.writerows(qualityHour) 
+            
     [first_timestamp, last_timestamp] = getLastWeekTimestamps(db, single_user[0])
+    print "line 242"
     qualityDay = getQualityDay(db, single_user[0], first_timestamp, last_timestamp, 1)
-
+    print "line 244"
+    
     with open(user_name + "_qualityDayLastWeek.csv", 'wb') as f:
         writer = csv.writer(f)
         writer.writerows(qualityDay)
-     
+    print "line 249"
+    
     plotWeekData(qualityDay, user_name)    
+    print "line 252"
 
     [first_timestamp, last_timestamp] = getLastMonthTimestamps(db, single_user[0])
     qualityDay = getQualityDay(db, single_user[0], first_timestamp, last_timestamp, 1)
@@ -254,14 +260,14 @@ for single_user in users_list:
         
     plotMonthData(qualityDay, user_name)
     
-    [first_timestamp, last_timestamp] = getAllDataTimestamps(db, single_user[0])
-    qualityDay = getQualityDay(db, single_user[0], first_timestamp, last_timestamp, 1)
-    
-    with open(user_name + "_qualityDayAll.csv", 'wb') as f:
-        writer = csv.writer(f)
-        writer.writerows(qualityDay) 
-        
-    plotAllData(qualityDay, user_name)
+#    [first_timestamp, last_timestamp] = getAllDataTimestamps(db, single_user[0])
+#    qualityDay = getQualityDay(db, single_user[0], first_timestamp, last_timestamp, 1)
+#    
+#    with open(user_name + "_qualityDayAll.csv", 'wb') as f:
+#        writer = csv.writer(f)
+#        writer.writerows(qualityDay) 
+#        
+#    plotAllData(qualityDay, user_name)
     plotRandomDays(db, single_user[0], user_name) 
     
 db.close()
