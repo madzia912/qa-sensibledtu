@@ -19,29 +19,33 @@ USER = 'magda'
 PWD = 'lokus1?'
 HOST = 'localhost'
 
-DB_CONN = {0 : 'edu_mit_media_funf_probe_builtin_BluetoothProbe',
-           1 : 'edu_mit_media_funf_probe_builtin_LocationProbe',
-           2 : 'edu_mit_media_funf_probe_builtin_WifiProbe'}
+DB_CONN = {'edu_mit_media_funf_probe_builtin_BluetoothProbe' : 'bluetooth',
+           'edu_mit_media_funf_probe_builtin_LocationProbe'  : 'location',
+           'edu_mit_media_funf_probe_builtin_WifiProbe'      : 'wifi'}
 
 TB_QUALITY_DAILY = 'data_quality_daily'
 TB_QUALITY_HOURLY = 'data_quality_hourly'
 TB_LAST_SCANS = 'user_last_scans'
 
 DB_QUALITY = 'data_quality'
-
-# TODO: make the code more optimized in names and run it for WiFi and Location
-# see http://stackoverflow.com/questions/17779005/python-stringbuilder-for-mysql-query-execution
-    
-def get_user_last_scan_id(db, user_id, db_id):
+   
+def insert_into(db, table_name, user, start_timestamp, end_timestamp, column, grade, count):
     cur = db.cursor()
-    #TODO: make it nice
-    if db_id == 0:
-        cur.execute('SELECT bluetooth_id FROM user_last_scans WHERE user=%s', (user_id))
-    elif db_id == 1:
-        cur.execute('SELECT gps_id FROM user_last_scans WHERE user=%s', (user_id))
-    elif db_id == 2:
-        cur.execute('SELECT wifi_id FROM user_last_scans WHERE user=%s', (user_id))
+    query = 'INSERT INTO %s (user, start_timestamp, end_timestamp, bluetooth_quality, wifi_quality, location_quality, bluetooth_count, wifi_count, location_count) ' % table_name
+    if column == 'bluetooth':
+        query = query + 'VALUES (%s, %s, %s, %s, 0, 0, %s, 0, 0) '
+    elif column == 'location':
+        query = query + 'VALUES (%s, %s, %s, 0, %s, 0, 0, %s, 0) '
+    elif column == 'wifi':
+        query = query + 'VALUES (%s, %s, %s, 0, 0, %s, 0, 0, %s) '
         
+    query = query + 'ON DUPLICATE KEY UPDATE %s = %s + %%s, %s = %s + %%s ' % (column + '_quality', column + '_quality', column + '_count', column + '_count')
+    cur.execute(query, (user, start_timestamp, end_timestamp, grade, count, grade, count))
+    
+def get_user_last_scan_id(db, user_id, column_name):
+    cur = db.cursor()
+    query = "SELECT %s FROM user_last_scans WHERE user=%%s" % (column_name + '_id')
+    cur.execute(query, (user_id))
     result = cur.fetchall()
     cur.close()
     return result[0][0] 
@@ -53,17 +57,17 @@ def get_users_list(db):
     cur.close()
     return result
     
-def update_qualities(db, db_qual, user_id, db_id):
-    scan_id = get_user_last_scan_id(db_qual, user_id, db_id)
+def update_qualities(db, db_qual, user_id, column_name):
+    scan_id = get_user_last_scan_id(db_qual, user_id, column_name)
     cur = db.cursor()
     cur.execute('SELECT DISTINCT(timestamp) FROM researcher WHERE user = %s and id > %s ORDER BY timestamp', (user_id, scan_id))
     fetched_data = cur.fetchall()
     cur.close()
     if len(fetched_data) > 0:
         print "Calculating daily quality..."
-        calc_day_quality(db_qual, fetched_data, user_id, db_id)
+        calc_day_quality(db_qual, fetched_data, user_id, column_name)
         print "Calculating hourly quality..."
-        calc_hour_quality(db_qual, fetched_data, user_id, db_id)
+        calc_hour_quality(db_qual, fetched_data, user_id, column_name)
         
         cur = db.cursor()
         cur.execute('SELECT id FROM researcher WHERE user = %s and id > %s ORDER BY id', (user_id, scan_id))
@@ -71,19 +75,14 @@ def update_qualities(db, db_qual, user_id, db_id):
         cur.close()
         
         cur = db_qual.cursor()
-        #TODO: make it nice
-        if db_id == 0:
-            cur.execute('UPDATE user_last_scans SET bluetooth_id = %s WHERE user = %s', (fetched_data[-1][0], user_id))
-        elif db_id == 1:
-            cur.execute('UPDATE user_last_scans SET gps_id = %s WHERE user = %s', (fetched_data[-1][0], user_id))
-        elif db_id == 2:
-            cur.execute('UPDATE user_last_scans SET wifi_id = %s WHERE user = %s', (fetched_data[-1][0], user_id))
+        query = 'UPDATE user_last_scans SET %s = %%s WHERE user = %%s' % (column_name + '_id')
+        cur.execute(query, (fetched_data[-1][0], user_id))
         db_qual.commit()
         cur.close()
     else:
         print 'No new scans arrived'
         
-def calc_hour_quality(db_qual, data, user_id, db_id):
+def calc_hour_quality(db_qual, data, user_id, column):
     last_timestamp = data[-1][0]
     first_timestamp = datetime(data[0][0].year, data[0][0].month, data[0][0].day, data[0][0].hour, 0)
     current_timestamp = first_timestamp
@@ -97,35 +96,12 @@ def calc_hour_quality(db_qual, data, user_id, db_id):
             idx = idx + 1
             current_timestamp = data[idx][0]
         grade = count / HOUR_EXP
-        
-        #TODO: make it nice
-        if db_id == 0:
-            cur.execute('INSERT INTO data_quality_hourly \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, %s, 0, 0, %s, 0, 0) \
-            ON DUPLICATE KEY UPDATE bluetooth_quality = bluetooth_quality + %s, bluetooth_count = bluetooth_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
-        elif db_id == 1:
-            cur.execute('INSERT INTO data_quality_hourly \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, 0, %s, 0, 0, %s, 0) \
-            ON DUPLICATE KEY UPDATE location_quality = location_quality + %s, location_count = location_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
-        elif db_id == 2:
-            cur.execute('INSERT INTO data_quality_hourly \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, 0, 0, %s, 0, 0, %s) \
-            ON DUPLICATE KEY UPDATE wifi_quality = wifi_quality + %s, wifi_count = wifi_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
+        insert_into(db_qual, TB_QUALITY_HOURLY, user_id, first_timestamp, end_timestamp, column, grade, count)
         first_timestamp = end_timestamp
     db_qual.commit()
     cur.close()
         
-
-def calc_day_quality(db_qual, data, user_id, db_id):
+def calc_day_quality(db_qual, data, user_id, column):
     last_timestamp = data[-1][0]
     first_timestamp = datetime(data[0][0].year, data[0][0].month, data[0][0].day, 0, 0)
     current_timestamp = first_timestamp
@@ -139,28 +115,7 @@ def calc_day_quality(db_qual, data, user_id, db_id):
             idx = idx + 1
             current_timestamp = data[idx][0]
         grade = count / DAY_EXP
-        #TODO: make it nice
-        if db_id == 0:
-            cur.execute('INSERT INTO data_quality_daily \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, %s, 0, 0, %s, 0, 0) \
-            ON DUPLICATE KEY UPDATE bluetooth_quality = bluetooth_quality + %s, bluetooth_count = bluetooth_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
-        elif db_id == 1:
-            cur.execute('INSERT INTO data_quality_daily \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, 0, %s, 0, 0, %s, 0) \
-            ON DUPLICATE KEY UPDATE location_quality = location_quality + %s, location_count = location_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
-        elif db_id == 2:
-            cur.execute('INSERT INTO data_quality_daily \
-            (user, start_timestamp, end_timestamp, bluetooth_quality, \
-            wifi_quality, location_quality, bluetooth_count, wifi_count, \
-            location_count) VALUES (%s, %s, %s, 0, 0, %s, 0, 0, %s) \
-            ON DUPLICATE KEY UPDATE wifi_quality = wifi_quality + %s, wifi_count = wifi_count + %s', \
-            (user_id, first_timestamp, end_timestamp, grade, count, grade, count))
+        insert_into(db_qual, TB_QUALITY_DAILY, user_id, first_timestamp, end_timestamp, column, grade, count)
         first_timestamp = end_timestamp
     db_qual.commit()
     cur.close()
@@ -173,8 +128,8 @@ except MySQLdb.Error, e:
   
 for connection in DB_CONN.keys():
     try:
-        db_data = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = DB_CONN[connection])
-        print 'Connected to database: ', DB_CONN[connection]
+        db_data = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = connection)
+        print 'Connected to database: ', connection
     except MySQLdb.Error, e:
         print "Error %d: %s" % (e.args[0], e.args[1])
         break
@@ -187,11 +142,8 @@ for connection in DB_CONN.keys():
         user_idx = user_idx + 1
         user_name = "user" + str(user_idx)
         print 'Processing ', user_name    
-        update_qualities(db_data, db_quality, single_user[0], connection)
+        update_qualities(db_data, db_quality, single_user[0], DB_CONN[connection])
     print 'Execution time: ', datetime.now() - before
     db_data.close()
     
 db_quality.close()
-    
-    
-    
