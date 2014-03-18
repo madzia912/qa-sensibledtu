@@ -72,7 +72,6 @@ def plot_week_data(db, user_id):
     fetched_data = cur.fetchall()
     cur.close()
     last_timestamp = fetched_data[0][0]
-    print last_timestamp
     cur = db.cursor()
     cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s AND start_timestamp > DATE_SUB(%s, INTERVAL 7 DAY)', (user_id, last_timestamp))
     fetched_data = cur.fetchall()
@@ -85,7 +84,6 @@ def plot_month_data(db, user_id):
     fetched_data = cur.fetchall()
     cur.close()
     last_timestamp = fetched_data[0][0]
-    print last_timestamp
     cur = db.cursor()
     cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s AND start_timestamp > DATE_SUB(%s, INTERVAL 37 DAY) AND start_timestamp <= DATE_SUB(%s, INTERVAL 7 DAY)', (user_id, last_timestamp, last_timestamp))
     fetched_data = cur.fetchall()
@@ -143,20 +141,24 @@ def plot_random_days(db, user_id, user_name):
         plt.savefig('pictures/' + 'day_' + user_name + '_' + str(i) + '.png', bbox_inches='tight')
         plt.close()
 
-DB_QUALITY = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = DB_QUALITY)
+try:
+    db_quality = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = DB_QUALITY)
+    print 'Connected to database: ', DB_QUALITY
+except MySQLdb.Error, e:
+    print "Error %d: %s" % (e.args[0],e.args[1])
 
-USERS_LIST = get_users_list(DB_QUALITY)
+USERS_LIST = get_users_list(db_quality)
 USER_IDX = 0
 
 for single_user in USERS_LIST:
     USER_IDX = USER_IDX + 1
     user_name = "user" + str(USER_IDX)
-    print user_name
-    plot_week_data(DB_QUALITY, single_user[0])
-    plot_month_data(DB_QUALITY, single_user[0])
-    plot_all_data(DB_QUALITY, single_user[0])
-    plot_random_days(DB_QUALITY, single_user[0], single_user[0])
+    print "Processing: ", user_name
+    plot_week_data(db_quality, single_user[0])
+    plot_month_data(db_quality, single_user[0])
+    plot_all_data(db_quality, single_user[0])
+    plot_random_days(db_quality, single_user[0], single_user[0])
 
-DB_QUALITY.close()
+db_quality.close()
 
 
