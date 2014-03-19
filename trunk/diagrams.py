@@ -10,11 +10,11 @@ from datetime import timedelta
 from matplotlib import pyplot as plt
 from matplotlib.dates import date2num
 from matplotlib.dates import DateFormatter
-import pylab as pl
 import MySQLdb
 from random import randrange
 
 # Diagram layout settings
+DAY_FMT = "%H:%M"
 DATE_FMT = "%d-%m-%y"
 YLIM = [0, 1.1]
 
@@ -55,22 +55,30 @@ def get_users_list(db):
     cur.close()
     return result
 
-def common_plotting(user_data, user_id, subfolder, prefix, wid = None, xlim=None):
+def common_plotting(user_data, user_id, subfolder, prefix, date_fmt=None, wid=None, xlim=None):
     x_val = [date2num(row[0]) for row in user_data]
     y_val = [row[1] for row in user_data]
     colors = get_bar_colour(y_val)
-    pl.figure()
-    pl.subplot(111)
+    plt.figure()
+    plt.subplot(111)
+
+    plt.gca().xaxis.set_major_formatter(DateFormatter(date_fmt))
+    #plt.gca().xaxis.set_major_locator(DayLocator())
+
     if wid != None:
-        pl.bar(x_val, y_val, width = wid, color = colors)
-    pl.bar(x_val, y_val, color = colors)
-    pl.title('Quality of data for ' + user_id)
-    pl.xticks(rotation = 30)
+        plt.bar(x_val, y_val, width = wid, color = colors)
+    else:
+        plt.bar(x_val, y_val, color = colors)
+        
+    plt.title('Quality of data for ' + user_id)
+    plt.xticks(rotation = 30)
+    
     #current_axis = pl.gca()
     #current_axis.xaxis.set_major_formatter(DateFormatter(DATE_FMT))
-    pl.xlim(xlim)
+    
+    plt.xlim(xlim)
+    plt.gcf().autofmt_xdate()
     plt.show()
-    print PICTURE_FOLDER + subfolder + '/' + prefix + user_id + '.png'
     plt.savefig(PICTURE_FOLDER + subfolder + '/' + prefix + user_id + '.png', bbox_inches = 'tight')
     plt.close()
 
@@ -83,14 +91,14 @@ def get_bar_colour(data):
             colors.append('r')
     return colors
 
-def plot_week_data(db, user_id, column, table_name):
+def plot_week_data(db, user_id, column, table_name, wid):
     (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
     cur = db.cursor()
     query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s AND start_timestamp > DATE_SUB(%%s, INTERVAL 7 DAY)' % (column + '_quality', table_name)
     cur.execute(query, (user_id, last_timestamp))    
     fetched_data = cur.fetchall()
     cur.close()
-    common_plotting(fetched_data, user_id, column, 'week_')
+    common_plotting(fetched_data, user_id, column, 'week_', DATE_FMT, wid, [last_timestamp - timedelta(days = 7), last_timestamp + timedelta(days = 1)])
 
 def plot_month_data(db, user_id, column, table_name):
     (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
@@ -99,7 +107,7 @@ def plot_month_data(db, user_id, column, table_name):
     cur.execute(query, (user_id, last_timestamp, last_timestamp))    
     fetched_data = cur.fetchall()
     cur.close()
-    common_plotting(fetched_data, user_id, column, 'month_')
+    common_plotting(fetched_data, user_id, column, 'month_', DATE_FMT, None, [last_timestamp - timedelta(days = 37), last_timestamp - timedelta(days = 6)])
 
 def plot_all_data(db, user_id, column, table_name):
     cur = db.cursor()
@@ -107,7 +115,7 @@ def plot_all_data(db, user_id, column, table_name):
     cur.execute(query, (user_id))
     fetched_data = cur.fetchall()
     cur.close()
-    common_plotting(fetched_data, user_id, column, 'all_')
+    common_plotting(fetched_data, user_id, column, 'all_', DATE_FMT)
 
 def random_date(start, end):
     """
@@ -121,8 +129,10 @@ def random_date(start, end):
 
 def plot_random_days(db, user_id, column, table_name, wid, count):
     (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
-    for i in xrange(0, count):
+    i = 0
+    while i < count:
         date = random_date(first_timestamp, last_timestamp)
+        print date
         start_date = datetime(date.year, date.month, date.day, 0, 0)
         end_date = datetime(date.year, date.month, date.day, 23, 59, 59)
         cur = db.cursor()
@@ -130,7 +140,13 @@ def plot_random_days(db, user_id, column, table_name, wid, count):
         cur.execute(query, (user_id, start_date, end_date))
         fetched_data = cur.fetchall()
         cur.close()
-        common_plotting(fetched_data, user_id, column, 'day_', wid)
+        values = [row[1] for row in fetched_data]
+        print any(v > 0 for v in values)
+        if any(v > 0 for v in values):
+            common_plotting(fetched_data, user_id, column, 'day_', DAY_FMT, wid, [start_date, end_date])
+            i = i + 1
+        else:
+            print 'Day empty, taking another day.'
 
 try:
     db_quality = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = DB_QUALITY)
@@ -147,7 +163,7 @@ for connection in DB_CONN.keys():
         user_name = "user" + str(USER_IDX)
         
         print "Processing: ", user_name
-        plot_week_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
+        plot_week_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY, 0.3)
         plot_month_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
         plot_all_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
         plot_random_days(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_HOURLY, 0.035, 3)
