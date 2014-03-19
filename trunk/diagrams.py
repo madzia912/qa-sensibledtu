@@ -28,12 +28,26 @@ USER = 'magda'
 PWD = 'lokus1?'
 HOST = 'localhost'
 
+DB_CONN = {'edu_mit_media_funf_probe_builtin_BluetoothProbe' : 'bluetooth',
+           'edu_mit_media_funf_probe_builtin_LocationProbe'  : 'location',
+           'edu_mit_media_funf_probe_builtin_WifiProbe'      : 'wifi'}
+           
 TB_QUALITY_DAILY = 'data_quality_daily'
 TB_QUALITY_HOURLY = 'data_quality_hourly'
 TB_LAST_SCANS = 'user_last_scans'
 
 DB_QUALITY = 'data_quality'
 
+PICTURE_FOLDER = 'pictures/'
+
+def get_first_last_timestamp(db, user_id, column, table_name):
+    cur = db.cursor()
+    query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s ORDER BY start_timestamp DESC' % (column + '_quality', table_name)
+    cur.execute(query, (user_id))
+    fetched_data = cur.fetchall()
+    cur.close()
+    return (fetched_data[-1][0], fetched_data[0][0])
+    
 def get_users_list(db):
     cur = db.cursor()
     cur.execute('SELECT DISTINCT(user) FROM user_last_scans')
@@ -41,7 +55,7 @@ def get_users_list(db):
     cur.close()
     return result
 
-def common_plotting(user_data, user_id, prefix, xlim=None):
+def common_plotting(user_data, user_id, subfolder, prefix, xlim=None):
     x_val = [date2num(row[0]) for row in user_data]
     y_val = [row[1] for row in user_data]
     colors = get_bar_colour(y_val)
@@ -54,7 +68,9 @@ def common_plotting(user_data, user_id, prefix, xlim=None):
     current_axis.xaxis.set_major_formatter(DateFormatter(DATE_FMT))
     pl.xlim(xlim)
     plt.show()
-    plt.savefig('pictures/' + prefix + user_id + '.png', bbox_inches = 'tight')
+    print 'pictures/' + subfolder + '/' + prefix + user_id + '.png'
+    plt.savefig('lala.png')
+    #plt.savefig('pictures/' + subfolder + '/' + prefix + user_id + '.png', bbox_inches = 'tight')
     plt.close()
 
 def get_bar_colour(data):
@@ -66,36 +82,31 @@ def get_bar_colour(data):
             colors.append('r')
     return colors
 
-def plot_week_data(db, user_id):
+def plot_week_data(db, user_id, column, table_name):
+    (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
     cur = db.cursor()
-    cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s ORDER BY start_timestamp DESC', (user_id))
+    query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s AND start_timestamp > DATE_SUB(%%s, INTERVAL 7 DAY)' % (column + '_quality', table_name)
+    cur.execute(query, (user_id, last_timestamp))    
     fetched_data = cur.fetchall()
     cur.close()
-    last_timestamp = fetched_data[0][0]
-    cur = db.cursor()
-    cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s AND start_timestamp > DATE_SUB(%s, INTERVAL 7 DAY)', (user_id, last_timestamp))
-    fetched_data = cur.fetchall()
-    cur.close()
-    common_plotting(fetched_data, user_id, 'week_')
+    common_plotting(fetched_data, user_id, column, 'week_')
 
-def plot_month_data(db, user_id):
+def plot_month_data(db, user_id, column, table_name):
+    (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
     cur = db.cursor()
-    cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s ORDER BY start_timestamp DESC', (user_id))
+    query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s AND start_timestamp > DATE_SUB(%%s, INTERVAL 37 DAY) AND start_timestamp <= DATE_SUB(%%s, INTERVAL 7 DAY)' % (column + '_quality', table_name)
+    cur.execute(query, (user_id, last_timestamp, last_timestamp))    
     fetched_data = cur.fetchall()
     cur.close()
-    last_timestamp = fetched_data[0][0]
-    cur = db.cursor()
-    cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s AND start_timestamp > DATE_SUB(%s, INTERVAL 37 DAY) AND start_timestamp <= DATE_SUB(%s, INTERVAL 7 DAY)', (user_id, last_timestamp, last_timestamp))
-    fetched_data = cur.fetchall()
-    cur.close()
-    common_plotting(fetched_data, user_id, 'month_')
+    common_plotting(fetched_data, user_id, column, 'month_')
 
-def plot_all_data(db, user_id):
+def plot_all_data(db, user_id, column, table_name):
     cur = db.cursor()
-    cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_daily WHERE user = %s', (user_id))
+    query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s' % (column + '_quality', table_name)
+    cur.execute(query, (user_id))
     fetched_data = cur.fetchall()
     cur.close()
-    common_plotting(fetched_data, user_id, 'all_')
+    common_plotting(fetched_data, user_id, column, 'all_')
 
 def random_date(start, end):
     """
@@ -107,39 +118,18 @@ def random_date(start, end):
     random_second = randrange(int_delta)
     return start + timedelta(seconds=random_second)
 
-def plot_random_days(db, user_id, user_name):
-    cur = db.cursor()
-    cur.execute('SELECT start_timestamp FROM data_quality_hourly WHERE user = %s ORDER BY start_timestamp DESC', (user_id))
-    fetched_data = cur.fetchall()
-    last_timestamp = fetched_data[0][0]
-    first_timestamp = fetched_data[-1][0]
-    cur.close()
-
-    for i in xrange(0, 3):
+def plot_random_days(db, user_id, column, table_name, count):
+    (first_timestamp, last_timestamp) = get_first_last_timestamp(db, user_id, column, table_name)
+    for i in xrange(0, count):
         date = random_date(first_timestamp, last_timestamp)
         start_date = datetime(date.year, date.month, date.day, 0, 0)
         end_date = datetime(date.year, date.month, date.day, 23, 59, 59)
-
         cur = db.cursor()
-        cur.execute('SELECT start_timestamp, bluetooth_quality FROM data_quality_hourly WHERE user = %s AND start_timestamp > %s AND start_timestamp < %s ORDER BY start_timestamp DESC', (user_id, start_date, end_date))
+        query = 'SELECT start_timestamp, %s FROM %s WHERE user = %%s AND start_timestamp > %%s AND start_timestamp < %%s ORDER BY start_timestamp DESC' % (column + '_quality', table_name)
+        cur.execute(query, (user_id, start_date, end_date))
         fetched_data = cur.fetchall()
         cur.close()
-
-        x_val = [date2num(row[0]) for row in fetched_data]
-        y_val = [row[1] for row in fetched_data]
-
-        colors = get_bar_colour(fetched_data)
-        pl.figure()
-        pl.subplot(111)
-        pl.bar(x_val, y_val, width = 0.035, color = colors)
-        pl.xlim([start_date, end_date])
-        pl.title('Quality of data per hour, ' + user_name + " " + date.strftime(DATE_FMT))
-        pl.xticks(rotation = 30)
-        current_axis = pl.gca()
-        current_axis.xaxis.set_major_formatter(DateFormatter("%H:%M"))
-        plt.show()
-        plt.savefig('pictures/' + 'day_' + user_name + '_' + str(i) + '.png', bbox_inches='tight')
-        plt.close()
+        common_plotting(fetched_data, user_id, column, 'day_')
 
 try:
     db_quality = MySQLdb.connect(host = HOST, user = USER, passwd = PWD, db = DB_QUALITY)
@@ -150,15 +140,17 @@ except MySQLdb.Error, e:
 USERS_LIST = get_users_list(db_quality)
 USER_IDX = 0
 
-for single_user in USERS_LIST:
-    USER_IDX = USER_IDX + 1
-    user_name = "user" + str(USER_IDX)
-    print "Processing: ", user_name
-    plot_week_data(db_quality, single_user[0])
-    plot_month_data(db_quality, single_user[0])
-    plot_all_data(db_quality, single_user[0])
-    plot_random_days(db_quality, single_user[0], single_user[0])
-
+for connection in DB_CONN.keys():
+    for single_user in USERS_LIST:
+        USER_IDX = USER_IDX + 1
+        user_name = "user" + str(USER_IDX)
+        
+        print "Processing: ", user_name
+        plot_week_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
+        plot_month_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
+        plot_all_data(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_DAILY)
+        plot_random_days(db_quality, single_user[0], DB_CONN[connection], TB_QUALITY_HOURLY, 3)
+        
 db_quality.close()
 
 
