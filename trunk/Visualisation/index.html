@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+    <title>QA of SensibleDTU</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="wrapper">
+        <h1>QA of SensibleDTU</h1>
+        <h3>Bluetooth</h3>
+        <div class="radio">
+            <input id="all1" type="radio" value="all1" name="group1">
+            <label for="all1">Sort by all</label>
+            <input id="month1" type="radio" value="month1" name="group1">
+            <label for="month1">Sort by month</label>
+            <input id="week1" type="radio" value="week1" name="group1">
+            <label for="week1">Sort by week</label>
+            <input id="none1" type="radio" value="none1" name="group1" checked="checked">
+            <label for="none1">None</label>
+			<div id="chartbluetooth"></div>
+        </div>
+        <h3>Wi-Fi</h3>
+        <div class="radio">
+            <input id="all2" type="radio" value="all2" name="group1">
+            <label for="all2">Sort by all</label>
+            <input id="month2" type="radio" value="month2" name="group1">
+            <label for="month2">Sort by month</label>
+            <input id="week2" type="radio" value="week2" name="group1">
+            <label for="week2">Sort by week</label>
+            <input id="none2" type="radio" value="none2" name="group1" checked="checked">
+            <label for="none2">None</label>
+			<div id="chartwifi"></div>
+        </div>
+		<h3>Location</h3>
+		<div class="radio">
+            <input id="all3" type="radio" value="all3" name="group1">
+            <label for="all3">Sort by all</label>
+            <input id="month3" type="radio" value="month3" name="group1">
+            <label for="month3">Sort by month</label>
+            <input id="week3" type="radio" value="week3" name="group1">
+            <label for="week3">Sort by week</label>
+            <input id="none3" type="radio" value="none3" name="group1" checked="checked">
+            <label for="none3">None</label>
+			<div id="chartlocation"></div>
+        </div>
+    </div>
+    <script src="http://d3js.org/d3.v3.js"></script>
+    <script>
+        var margin = {
+            top: 20,
+            right: 80,
+            bottom: 50,
+            left: 50
+        },
+            width = 960 - margin.left - margin.right,
+            height = 500 - margin.top - margin.bottom;
+
+        var formatPercent = d3.format(".0%");
+
+        var x = d3.scale.ordinal()
+            .rangeRoundBands([0, width]);
+
+        var y = d3.scale.linear()
+            .range([height, 0]);
+
+        var color = d3.scale.category10();
+
+        var xAxis = d3.svg.axis()
+            .scale(x)
+            .orient("bottom");
+
+        var yAxis = d3.svg.axis()
+            .scale(y)
+            .orient("left")
+            .tickFormat(formatPercent);
+
+        var chart1 = d3.select("#chartbluetooth").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+        d3.tsv("dataBluetooth.tsv", function (error, data) {
+            color.domain(d3.keys(data[0]).filter(function (key) {
+                return key !== "username";
+            }));
+
+            data.forEach(function (d) {
+                d.username = d.username;
+            });
+
+            var qualities = color.domain().map(function (name) {
+                return {
+                    name: name,
+                    values: data.map(function (d) {
+                        return {
+                            username: d.username,
+                            value: +d[name],
+                            color: name
+                        };
+                    })
+                };
+            });
+
+            x.domain(data.map(function (d) {
+                return d.username;
+            }));
+            y.domain([
+                d3.min(qualities, function (c) {
+                    return d3.min(c.values, function (v) {
+                        return v.value;
+                    });
+                }),
+                d3.max(qualities, function (c) {
+                    return d3.max(c.values, function (v) {
+                        return v.value;
+                    });
+                })
+            ]);
+
+            chart1.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", function (d) {
+                    return "rotate(-90)"
+                });
+
+            chart1.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Quality");
+
+
+            var quality = chart1.selectAll(".quality")
+                .data(qualities)
+                .enter();
+
+            // doloz grupe dla kazdego quality 
+            var groups = quality.append("g")
+                .attr("class", "quality");
+
+            // kazdej z grup (czyli kazdemu z quality) dodaj kolko dla kazdej z danych w danym quality (d.values)
+            groups.selectAll("circle")
+                .data(
+                    function (d) {
+                        return d.values;
+                    })
+
+            .enter()
+                .append("circle")
+                .attr("class", "mark")
+                .attr("cx", function (d) {
+                    return x(d.username) + x.rangeBand() / 2;
+                })
+                .attr("cy", function (d) {
+                    return y(d.value);
+                })
+                .attr("r", 10)
+                .style("fill", function (d) {
+                    return color(d.color);
+                });
+
+
+            ////////////////////////////////////////// SORTING
+
+            d3.select("#none1").on("click", function (d, i) {
+                change(0)
+            });
+            d3.select("#all1").on("click", function (d, i) {
+                change(1)
+            });
+            d3.select("#month1").on("click", function (d, i) {
+                change(2)
+            });
+            d3.select("#week1").on("click", function (d, i) {
+                change(3)
+            });
+
+            function change(action) {
+
+                // Copy-on-write since tweens are evaluated after a delay.
+
+                console.log(action)
+
+                switch (action) {
+                case 0:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return d3.ascending(a.username, b.username);
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 1:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.all - a.all;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 2:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.month - a.month;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 3:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.week - a.week;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                default:
+                }
+
+                var transition = chart1.transition().duration(750),
+                    delay = function (d, i) {
+                        return i * 50;
+                    };
+
+                transition.selectAll("circle.mark")
+                    .delay(delay)
+                    .attr("cx", function (d) {
+                        return x0(d.username) + x.rangeBand() / 2;
+                    });
+
+                transition.select(".x.axis")
+                    .call(xAxis)
+                    .selectAll("g")
+                    .delay(delay)
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-.8em")
+                    .attr("dy", ".15em")
+                    .attr("transform", function (d) {
+                        return "rotate(-90)"
+                    });
+            }
+
+        });
+		
+		var chart2 = d3.select("#chartwifi").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+			
+		d3.tsv("dataWifi.tsv", function (error, data) {
+            color.domain(d3.keys(data[0]).filter(function (key) {
+                return key !== "username";
+            }));
+
+            data.forEach(function (d) {
+                d.username = d.username;
+            });
+
+            var qualities = color.domain().map(function (name) {
+                return {
+                    name: name,
+                    values: data.map(function (d) {
+                        return {
+                            username: d.username,
+                            value: +d[name],
+                            color: name
+                        };
+                    })
+                };
+            });
+
+            x.domain(data.map(function (d) {
+                return d.username;
+            }));
+            y.domain([
+                d3.min(qualities, function (c) {
+                    return d3.min(c.values, function (v) {
+                        return v.value;
+                    });
+                }),
+                d3.max(qualities, function (c) {
+                    return d3.max(c.values, function (v) {
+                        return v.value;
+                    });
+                })
+            ]);
+
+            chart2.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", function (d) {
+                    return "rotate(-90)"
+                });
+
+            chart2.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Quality");
+
+
+            var quality = chart2.selectAll(".quality")
+                .data(qualities)
+                .enter();
+
+            // doloz grupe dla kazdego quality 
+            var groups = quality.append("g")
+                .attr("class", "quality");
+
+            // kazdej z grup (czyli kazdemu z quality) dodaj kolko dla kazdej z danych w danym quality (d.values)
+            groups.selectAll("circle")
+                .data(
+                    function (d) {
+                        return d.values;
+                    })
+
+            .enter()
+                .append("circle")
+                .attr("class", "mark")
+                .attr("cx", function (d) {
+                    return x(d.username) + x.rangeBand() / 2;
+                })
+                .attr("cy", function (d) {
+                    return y(d.value);
+                })
+                .attr("r", 10)
+                .style("fill", function (d) {
+                    return color(d.color);
+                });
+
+
+            ////////////////////////////////////////// SORTING
+
+            d3.select("#none2").on("click", function (d, i) {
+                change(0)
+            });
+            d3.select("#all2").on("click", function (d, i) {
+                change(1)
+            });
+            d3.select("#month2").on("click", function (d, i) {
+                change(2)
+            });
+            d3.select("#week2").on("click", function (d, i) {
+                change(3)
+            });
+
+            function change(action) {
+
+                // Copy-on-write since tweens are evaluated after a delay.
+
+                console.log(action)
+
+                switch (action) {
+                case 0:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return d3.ascending(a.username, b.username);
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 1:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.all - a.all;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 2:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.month - a.month;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 3:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.week - a.week;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                default:
+                }
+
+                var transition = chart2.transition().duration(750),
+                    delay = function (d, i) {
+                        return i * 50;
+                    };
+
+                transition.selectAll("circle.mark")
+                    .delay(delay)
+                    .attr("cx", function (d) {
+                        return x0(d.username) + x.rangeBand() / 2;
+                    });
+
+                transition.select(".x.axis")
+                    .call(xAxis)
+                    .selectAll("g")
+                    .delay(delay)
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-.8em")
+                    .attr("dy", ".15em")
+                    .attr("transform", function (d) {
+                        return "rotate(-90)"
+                    });
+            }
+
+        });	
+    
+		var chart3 = d3.select("#chartlocation").append("svg")
+            .attr("width", width + margin.left + margin.right)
+            .attr("height", height + margin.top + margin.bottom)
+            .append("g")
+            .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+		
+		d3.tsv("dataLocation.tsv", function (error, data) {
+            color.domain(d3.keys(data[0]).filter(function (key) {
+                return key !== "username";
+            }));
+
+            data.forEach(function (d) {
+                d.username = d.username;
+            });
+
+            var qualities = color.domain().map(function (name) {
+                return {
+                    name: name,
+                    values: data.map(function (d) {
+                        return {
+                            username: d.username,
+                            value: +d[name],
+                            color: name
+                        };
+                    })
+                };
+            });
+
+            x.domain(data.map(function (d) {
+                return d.username;
+            }));
+            y.domain([
+                d3.min(qualities, function (c) {
+                    return d3.min(c.values, function (v) {
+                        return v.value;
+                    });
+                }),
+                d3.max(qualities, function (c) {
+                    return d3.max(c.values, function (v) {
+                        return v.value;
+                    });
+                })
+            ]);
+
+            chart3.append("g")
+                .attr("class", "x axis")
+                .attr("transform", "translate(0," + height + ")")
+                .call(xAxis)
+                .selectAll("text")
+                .style("text-anchor", "end")
+                .attr("dx", "-.8em")
+                .attr("dy", ".15em")
+                .attr("transform", function (d) {
+                    return "rotate(-90)"
+                });
+
+            chart3.append("g")
+                .attr("class", "y axis")
+                .call(yAxis)
+                .append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 6)
+                .attr("dy", ".71em")
+                .style("text-anchor", "end")
+                .text("Quality");
+
+
+            var quality = chart3.selectAll(".quality")
+                .data(qualities)
+                .enter();
+
+            // doloz grupe dla kazdego quality 
+            var groups = quality.append("g")
+                .attr("class", "quality");
+
+            // kazdej z grup (czyli kazdemu z quality) dodaj kolko dla kazdej z danych w danym quality (d.values)
+            groups.selectAll("circle")
+                .data(
+                    function (d) {
+                        return d.values;
+                    })
+
+            .enter()
+                .append("circle")
+                .attr("class", "mark")
+                .attr("cx", function (d) {
+                    return x(d.username) + x.rangeBand() / 2;
+                })
+                .attr("cy", function (d) {
+                    return y(d.value);
+                })
+                .attr("r", 10)
+                .style("fill", function (d) {
+                    return color(d.color);
+                });
+
+
+            ////////////////////////////////////////// SORTING
+
+            d3.select("#none3").on("click", function (d, i) {
+                change(0)
+            });
+            d3.select("#all3").on("click", function (d, i) {
+                change(1)
+            });
+            d3.select("#month3").on("click", function (d, i) {
+                change(2)
+            });
+            d3.select("#week3").on("click", function (d, i) {
+                change(3)
+            });
+
+            function change(action) {
+
+                // Copy-on-write since tweens are evaluated after a delay.
+
+                console.log(action)
+
+                switch (action) {
+                case 0:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return d3.ascending(a.username, b.username);
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 1:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.all - a.all;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 2:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.month - a.month;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                case 3:
+                    var x0 = x.domain(data.sort(function (a, b) {
+                            return b.week - a.week;
+                        })
+                        .map(function (d) {
+                            return d.username;
+                        }))
+                        .copy();
+                    break;
+                default:
+                }
+
+                var transition = chart3.transition().duration(750),
+                    delay = function (d, i) {
+                        return i * 50;
+                    };
+
+                transition.selectAll("circle.mark")
+                    .delay(delay)
+                    .attr("cx", function (d) {
+                        return x0(d.username) + x.rangeBand() / 2;
+                    });
+
+                transition.select(".x.axis")
+                    .call(xAxis)
+                    .selectAll("g")
+                    .delay(delay)
+                    .selectAll("text")
+                    .style("text-anchor", "end")
+                    .attr("dx", "-.8em")
+                    .attr("dy", ".15em")
+                    .attr("transform", function (d) {
+                        return "rotate(-90)"
+                    });
+            }
+
+        });
+		
+	</script>
