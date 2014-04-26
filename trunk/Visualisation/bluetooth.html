@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<html>
+
+<head>
+    <title>Bluetooth discoverability - SensibleDTU</title>
+    <meta name="author" content="Magdalena Anna Furman s110848 DTU 2014">
+    <meta name="description" content="Visualisation of bluetooth discoverability of users of SensibleDTU">
+    <meta name="keywords" content="SensibleDTU, bluetooth discoverability">
+    <meta charset="utf-8">
+
+    <link rel="stylesheet" href="css/styleBluetooth.css">
+</head>
+
+<body>
+    <h1 id="title1">Bluetooth discoverability - SensibleDTU</h1>
+    <div class="container">
+		
+		
+        <div class="checkbox">
+            <input id="check1" type="checkbox" name="check" value="check1">
+            <label for="check1">Sorted</label>
+        </div>
+		
+		<div id="legend"></div>
+
+        <div class="left">
+            <div id="chart"></div>
+        </div>
+
+        <div class="right">
+            <button type="button" onclick="copyToClipboard('userselect')">Copy to clipboard</button>
+            <button type="button" onclick="clearSelection('userselect')">Clear</button>
+            <div class="styled-select">
+                <form>
+                    <select id="userselect" width="200" style="width: 200px" size="23" ondblclick="removeOption(this.id)">
+                    </select>
+                </form>
+            </div>
+        </div>
+    </div>
+	
+	<script src="http://d3js.org/d3.v3.js"></script>
+	<script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <!-- For nice tool tip-->
+    <script src="js/coreBluetooth.js"></script>
+</body>
+
+</html>

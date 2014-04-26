@@ -1,0 +1,143 @@
+body{
+	background-color: #f9f9f9;
+	color: #555;
+	font: 10px sans-serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+div.container {
+	margin: 15px;   
+}
+
+div.left, div.right, div.chart {
+	float: left;
+	padding: 10px;    
+}
+
+/* Button style */
+button{
+	margin-right: 5px;
+	margin-bottom: 5px;
+}
+
+/* Axis */
+.axis line {
+	font: 8px sans-serif;
+	fill: none;
+	stroke: #555555;
+	shape-rendering: crispEdges;
+}
+
+rect.legend, rect.bordered {
+stroke: #E6E6E6;
+stroke-width:2px;   
+}
+
+/* Point on which mouse is hovered */	 
+rect.bordered:hover, rect.bordered.selected:hover {
+	stroke: #c00;
+	stroke-width: 4;
+	stroke-opacity: 1;
+}
+
+.bordered.selected{
+	stroke: #c00;
+	stroke-width: 4;
+	stroke-opacity: 0.5;
+}
+
+
+text.mono {
+font-weight: 900;
+}
+.y.axis{
+display: none;
+}
+.x.axis path {
+display: none;
+}
+.y.axis path {
+display: none;
+}
+
+input[type=checkbox] {
+	display: none;
+}
+
+label {
+	display: inline-block;
+	cursor: pointer;
+	position: relative;
+	padding-left: 25px;
+	margin-right: 15px;
+	font-size: 13px;
+}
+
+input[type=checkbox] {
+	display: none;
+}
+label:before {
+	content: "";
+	display: inline-block;
+
+	width: 16px;
+	height: 16px;
+
+	margin-right: 10px;
+	position: absolute;
+	left: 0;
+	bottom: 1px;
+	background-color: #aaa;
+	box-shadow: inset 0px 2px 3px 0px rgba(0, 0, 0, .3), 0px 1px 0px 0px rgba(255, 255, 255, .8);
+}
+
+.checkbox label {
+	margin-bottom: 10px;
+}
+.checkbox label:before {
+    border-radius: 3px;
+}
+
+input[type=checkbox]:checked + label:before {
+	content: "\2713";
+	text-shadow: 1px 1px 1px rgba(0, 0, 0, .2);
+	font-size: 15px;
+	color: #f3f3f3;
+	text-align: center;
+    line-height: 15px;
+}
+
+/* Tooltip */
+.d3-tip {
+  line-height: 1;
+  font-weight: bold;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  border-radius: 8px;
+}
+
+/* Creates a small triangle extender for the tooltip */
+.d3-tip:after {
+  box-sizing: border-box;
+  display: inline;
+  font-size: 10px;
+  width: 100%;
+  line-height: 1;
+  color: rgba(0, 0, 0, 0.8);
+  content: "\25BC";
+  position: absolute;
+  text-align: center;
+}
+
+/* Style northward tooltips differently */
+.d3-tip.n:after {
+  margin: -1px 0 0 0;
+  top: 100%;
+  left: 0;
+}
