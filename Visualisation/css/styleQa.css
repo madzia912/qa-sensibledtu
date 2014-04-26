@@ -1,15 +1,64 @@
-body {
+body{
 	background-color: #f9f9f9;
 	color: #555;
 	font: 10px sans-serif;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
 }
-.mark:hover {
+
+div.container {
+	margin: 15px;   
+}
+
+div.left, div.right, div.location, div.wifi, div.bluetooth {
+	float: left;
+	padding: 10px;    
+}
+
+rect.selection {
+    stroke          : red;
+    stroke-dasharray: 4px;
+    stroke-opacity  : 0.5;
+    fill            : transparent;
+}
+	 
+/* Point on which mouse is hovered */	 
+.mark:hover, .mark.selected:hover {
 	stroke: #c00;
-	stroke-width: 2;
+	stroke-width: 4;
+	stroke-opacity: 1;
 }
+
+.mark.selected{
+	stroke: #c00;
+	stroke-width: 4;
+	stroke-opacity: 0.5;
+}
+
+/* Axis */
+.axis path,
+.axis line {
+	font: 10px sans-serif;
+	fill: none;
+	stroke: #555555;
+	shape-rendering: crispEdges;
+}
+
+/* Xaxis text */
 .x text{
 	display: none;
 }
+
+/* Button style */
+button{
+	margin-right: 5px;
+	margin-bottom: 5px;
+}
+/* Radio button style */
 label, .x, .y {
 	display: inline-block;
 	cursor: pointer;
@@ -18,9 +67,26 @@ label, .x, .y {
 	margin-right: 15px;
 	font-size: 13px;
 }
+label{
+	font-weight: 900;
+}
+/* Radio buttons colouring */
+.labelall{
+	color: #1f77b4;
+}
+
+.labelmonth{
+	color: #FF7F0E;
+}
+
+.labelweek{
+	color: #2CA02C;
+}
+
 input[type=radio] {
 	display: none;
 }
+
 label:before, .x, .y {
 	content: "";
 	display: inline-block;
@@ -47,14 +113,8 @@ input[type=radio]:checked + label:before {
     text-align: center;
     line-height: 18px;
 }
-.axis path,
-.axis line {
-	font: 10px sans-serif;
-	fill: none;
-	stroke: #555555;
-	shape-rendering: crispEdges;
-}
 
+/* Tooltip */
 .d3-tip {
   line-height: 1;
   font-weight: bold;

@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+
+<head>
+    <title>QA of SensibleDTU</title>
+
+    <meta name="author" content="Magdalena Anna Furman s110848 DTU 2014">
+    <meta name="description" content="Visualisation of data quality in SensibleDTU">
+    <meta name="keywords" content="SensibleDTU, quality">
+    <meta charset="utf-8">
+
+    <link rel="stylesheet" href="css/styleQa.css">
+</head>
+
+<body>
+    <div class="wrapper">
+        <h1 id="title1">QA of SensibleDTU</h1>
+
+        <div class="bluetooth">
+            <h3>Bluetooth</h3>
+            <div class="radio">
+                <input id="all1" type="radio" value="all1" name="group1">
+                <label class="labelall" for="all1">Sort by all</label>
+
+                <input id="month1" type="radio" value="month1" name="group1">
+                <label class="labelmonth" for="month1">Sort by month</label>
+
+                <input id="week1" type="radio" value="week1" name="group1">
+                <label class="labelweek" for="week1">Sort by week</label>
+
+                <input id="none1" type="radio" value="none1" name="group1" checked="checked">
+                <label class="labelnone" for="none1">None</label>
+            </div>
+            <div class="container">
+                <div class="left">
+                    <div id="chartbluetooth"></div>
+                </div>
+                <div class="right">
+                    <button type="button" onclick="copyToClipboard('userselectBluetooth')">Copy to clipboard</button>
+                    <button type="button" onclick="clearSelection('userselectBluetooth')">Clear</button>
+                    <div class="styled-select">
+                        <form>
+                            <select id="userselectBluetooth" width="200" style="width: 200px" size="23" ondblclick="removeOption(this.id)">
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="wifi">
+            <h3>Wi-Fi</h3>
+            <div class="radio">
+                <input id="all2" type="radio" value="all2" name="group2">
+                <label class="labelall" for="all2">Sort by all</label>
+
+                <input id="month2" type="radio" value="month2" name="group2">
+                <label class="labelmonth" for="month2">Sort by month</label>
+
+                <input id="week2" type="radio" value="week2" name="group2">
+                <label class="labelweek" for="week2">Sort by week</label>
+
+                <input id="none2" type="radio" value="none2" name="group2" checked="checked">
+                <label class="labelnone" for="none2">None</label>
+            </div>
+
+            <div class="container">
+                <div class="left">
+                    <div id="chartwifi"></div>
+                </div>
+                <div class="right">
+                    <button type="button" onclick="copyToClipboard('userselectWifi')">Copy to clipboard</button>
+                    <button type="button" onclick="clearSelection('userselectWifi')">Clear</button>
+                    <div class="styled-select">
+                        <form>
+                            <select id="userselectWifi" width="200" style="width: 200px" size="23" ondblclick="removeOption(this.id)">
+                            </select>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="location">
+            <h3>Location</h3>
+            <div class="radio">
+                <input id="all3" type="radio" value="all3" name="group3">
+                <label class="labelall" for="all3">Sort by all</label>
+
+                <input id="month3" type="radio" value="month3" name="group3">
+                <label class="labelmonth" for="month3">Sort by month</label>
+
+                <input id="week3" type="radio" value="week3" name="group3">
+                <label class="labelweek" for="week3">Sort by week</label>
+
+                <input id="none3" type="radio" value="none3" name="group3" checked="checked">
+                <label class="labelnone" for="none3">None</label>
+
+                <div class="container">
+                    <div class="left">
+                        <div id="chartlocation"></div>
+                    </div>
+                    <div class="right">
+                        <button type="button" onclick="copyToClipboard('userselectLocation')">Copy to clipboard</button>
+                        <button type="button" onclick="clearSelection('userselectLocation')">Clear</button>
+                        <div class="styled-select">
+                            <form>
+                                <select id="userselectLocation" width="200" style="width: 200px" size="23" ondblclick="removeOption(this.id)">
+                                </select>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="http://d3js.org/d3.v3.js"></script>
+    <script src="http://labratrevenge.com/d3-tip/javascripts/d3.tip.v0.6.3.js"></script>
+    <!-- For nice tool tip-->
+    <script src="js/coreQa.js"></script>
+
+</body>
