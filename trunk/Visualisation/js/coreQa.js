@@ -45,13 +45,17 @@ var tip = d3.tip()
         return "<strong>Quality: </strong>" + (d.value * 100).toPrecision(3) + "%";
     })
 	
+var currentSorting = {'bluetooth' : { name: 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")} , 
+					  'wifi' : {name : 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")},
+					  'location' : { name: 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")}};
+
 // Buttons functionality
 function copyToClipboard(buttonId) {
 	var text = "";
 	switch(buttonId)
 	{
 	case "userselectBluetooth":
-		text = selectedUsersBluetooth.join(); // TODO: make a function getting all options from select
+		text = selectedUsersBluetooth.join();
 		break;
 	case "userselectWifi":
 		text = selectedUsersWifi.join();
@@ -60,7 +64,7 @@ function copyToClipboard(buttonId) {
 		text = selectedUsersLocation.join();
 		break;
 	}
-    window.prompt("Copy to clipboard: Ctrl+C, Enter", text); // TODO: find something better for copying to clipboard
+    window.prompt("Copy to clipboard: Ctrl+C, Enter", text);
 }
 
 function clearSelection(selectId) {
@@ -114,7 +118,7 @@ var chart1 = d3.select("#chartbluetooth").append("svg")
     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
 d3.select("#chartbluetooth").on("mousedown", function () {
-    chart1.selectAll("rect.selection").remove();
+	chart1.selectAll("rect.selection").remove();
     var p = d3.mouse(this);
     chart1.append("rect")
         .attr({
@@ -125,7 +129,7 @@ d3.select("#chartbluetooth").on("mousedown", function () {
             y: p[1] - margin.top,
             width: 0,
             height: 0
-        })
+        });
 })
     .on("mousemove", function () {
         var p = d3.mouse(this),
@@ -157,35 +161,65 @@ d3.select("#chartbluetooth").on("mousedown", function () {
             s.attr(d);
         }
     })
-    .on("mouseup", function () {
-        // remove selection frame
+    .on("mouseup", function () {		
         s = chart1.select("rect");
-
-        var rectVal = {
-            left: parseInt(s.attr("x")),
-            right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
-            top: parseInt(s.attr("y")),
-            bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
-        };
-
-        var allPoints = chart1.selectAll("circle.mark").each(function (d) {
-            if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
-                parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
-                d3.select(this).classed("selected", true);
-                chart1.selectAll(".mark").each(function (dd) {
-                    if (d.username == dd.username) {
-                        d3.select(this).classed("selected", true);
-                        if (selectedUsersBluetooth.indexOf(d.username) < 0) {
-                            var x = document.getElementById("userselectBluetooth");
-                            var option = document.createElement("option");
-                            option.text = d.username;
-                            x.add(option, x[0]);
-                            selectedUsersBluetooth.push(d.username);
-                        }
-                    }
-                })
-            }
-        });
+		var rectVal = {
+			left: parseInt(s.attr("x")),
+			right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
+			top: parseInt(s.attr("y")),
+			bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
+		};
+				
+		if(rectVal.left > 0) // the selection is in the diagram
+		{
+			// get all points inside selection
+			chart1.selectAll("circle.mark").each(function (d) {
+				// get all nodes inside rectangle
+				if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
+					parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
+					d3.select(this).classed("selected", true);
+					chart1.selectAll(".mark").each(function (dd) {
+						if (d.username == dd.username) {
+							d3.select(this).classed("selected", true);
+							if (selectedUsersBluetooth.indexOf(d.username) < 0) {
+								var x = document.getElementById("userselectBluetooth");
+								var option = document.createElement("option");
+								option.text = d.username;
+								x.add(option, x[0]);
+								selectedUsersBluetooth.push(d.username);
+							}
+						}
+					})
+				}
+			});
+		}
+		else // the selection was on Yaxis
+		{
+			chart1.selectAll("circle.mark").each(function (d) {
+				if (parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom)
+				{
+					// check which sorting is right now
+					// select all nodes with values on Yaxis
+					if(d3.rgb(currentSorting.bluetooth.colour).toString() == d3.rgb(getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")).toString() ||
+					   d3.rgb(currentSorting.bluetooth.colour).toString() == d3.rgb(this.style.fill).toString())
+					{
+						d3.select(this).classed("selected", true);
+						chart1.selectAll(".mark").each(function (dd) {
+							if (d.username == dd.username) {
+								d3.select(this).classed("selected", true);
+								if (selectedUsersBluetooth.indexOf(d.username) < 0) {
+									var x = document.getElementById("userselectBluetooth");
+									var option = document.createElement("option");
+									option.text = d.username;
+									x.add(option, x[0]);
+									selectedUsersBluetooth.push(d.username);
+								}
+							}
+						})
+					}
+				}
+			})
+		}
         d3.select("rect").remove();
     });
 
@@ -239,27 +273,24 @@ d3.tsv("databluetooth.tsv", function (error, data) {
         .attr("class", "y axis")
         .call(yAxis)
         .append("text")
-        .attr("transform", "rotate(-90)")
-        .attr("y", 6)
-        .attr("dy", ".71em")
-        .style("text-anchor", "end")
-        .text("Quality");
-
+			.attr("transform", "rotate(-90)")
+			.attr("y", 6)
+			.attr("dy", ".71em")
+			.style("text-anchor", "end")
+			.text("Quality")
+			
     var quality = chart1.selectAll(".quality")
         .data(qualities)
         .enter();
 
-    // doloz grupe dla kazdego quality 
     var groups = quality.append("g")
         .attr("class", "quality");
-
-    // kazdej z grup (czyli kazdemu z quality) dodaj kolko dla kazdej z danych w danym quality (d.values)
+	
     groups.selectAll("circle")
         .data(
             function (d) {
                 return d.values;
             })
-
     .enter()
         .append("circle")
         .attr("class", "mark")
@@ -279,8 +310,6 @@ d3.tsv("databluetooth.tsv", function (error, data) {
         })
         .on('mouseout', tip.hide)
         .on('dblclick', function (d) {
-
-
             if (selectedUsersBluetooth.indexOf(d.username) < 0) {
                 selectedUsersBluetooth.push(d.username);
 
@@ -311,64 +340,52 @@ d3.tsv("databluetooth.tsv", function (error, data) {
                 })
             }
         })
+		
     ////////////////////////////////////////// SORTING
 
     d3.select("#none1").on("click", function (d, i) {
-        change(0)
+		currentSorting.bluetooth = { name: 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")};
+		change("none");
     });
+	
     d3.select("#all1").on("click", function (d, i) {
-        change(1)
+		currentSorting.bluetooth = { name: 'all', colour: getComputedStyle(document.getElementById('labelall')).getPropertyValue("color")};
+		change("all");
     });
+	
     d3.select("#month1").on("click", function (d, i) {
-        change(2)
+		currentSorting.bluetooth = { name: 'month', colour: getComputedStyle(document.getElementById('labelmonth')).getPropertyValue("color")};
+		change("month");
     });
+	
     d3.select("#week1").on("click", function (d, i) {
-        change(3)
+		currentSorting.bluetooth = { name: 'week', colour: getComputedStyle(document.getElementById('labelweek')).getPropertyValue("color")};
+		change("week");
     });
 
     function change(action) {
-
-        // Copy-on-write since tweens are evaluated after a delay.
-
-        switch (action) {
-        case 0:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return d3.ascending(a.username, b.username);
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 1:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.all - a.all;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 2:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.month - a.month;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 3:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.week - a.week;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        default:
-        }
+	
+		var x0 = x.domain(data.sort(function (a, b) {
+				switch(action)
+				{
+				case "none":
+					return d3.ascending(a.username, b.username);
+					break;
+				case "all":
+					return b.all - a.all;
+					break;
+				case "month":
+					return b.month - a.month;
+					break;
+				case "week":
+					return b.week - a.week;
+					break;
+				}
+			})
+			.map(function (d) {
+				return d.username;
+			}))
+			.copy();
 
         var transition = groups.transition().duration(750),
             delay = function (d, i) {
@@ -436,34 +453,64 @@ d3.select("#chartwifi").on("mousedown", function () {
         }
     })
     .on("mouseup", function () {
-        // remove selection frame
         s = chart2.select("rect");
-
-        var rectVal = {
-            left: parseInt(s.attr("x")),
-            right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
-            top: parseInt(s.attr("y")),
-            bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
-        };
-
-        var allPoints = chart2.selectAll("circle.mark").each(function (d) {
-            if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
-                parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
-                d3.select(this).classed("selected", true);
-                chart2.selectAll(".mark").each(function (dd) {
-                    if (d.username == dd.username) {
-                        d3.select(this).classed("selected", true);
-                        if (selectedUsersWifi.indexOf(d.username) < 0) {
-                            var x = document.getElementById("userselectWifi");
-                            var option = document.createElement("option");
-                            option.text = d.username;
-                            x.add(option, x[0]);
-                            selectedUsersWifi.push(d.username);
-                        }
-                    }
-                })
-            }
-        });
+		var rectVal = {
+			left: parseInt(s.attr("x")),
+			right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
+			top: parseInt(s.attr("y")),
+			bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
+		};
+				
+		if(rectVal.left > 0) // the selection is in the diagram
+		{
+			// get all points inside selection
+			chart2.selectAll("circle.mark").each(function (d) {
+				// get all nodes inside rectangle
+				if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
+					parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
+					d3.select(this).classed("selected", true);
+					chart2.selectAll(".mark").each(function (dd) {
+						if (d.username == dd.username) {
+							d3.select(this).classed("selected", true);
+							if (selectedUsersWifi.indexOf(d.username) < 0) {
+								var x = document.getElementById("userselectWifi");
+								var option = document.createElement("option");
+								option.text = d.username;
+								x.add(option, x[0]);
+								selectedUsersWifi.push(d.username);
+							}
+						}
+					})
+				}
+			});
+		}
+		else // the selection was on Yaxis
+		{
+			chart2.selectAll("circle.mark").each(function (d) {
+				if (parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom)
+				{
+					// check which sorting is right now
+					// select all nodes with values on Yaxis
+					if(d3.rgb(currentSorting.wifi.colour).toString() == d3.rgb(getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")).toString() ||
+					   d3.rgb(currentSorting.wifi.colour).toString() == d3.rgb(this.style.fill).toString())
+					{
+						d3.select(this).classed("selected", true);
+						chart2.selectAll(".mark").each(function (dd) {
+							if (d.username == dd.username) {
+								d3.select(this).classed("selected", true);
+								if (selectedUsersWifi.indexOf(d.username) < 0) {
+									var x = document.getElementById("userselectWifi");
+									var option = document.createElement("option");
+									option.text = d.username;
+									x.add(option, x[0]);
+									selectedUsersWifi.push(d.username);
+								}
+							}
+						})
+					}
+				}
+			})
+		}
         d3.select("rect").remove();
     });
 	
@@ -599,64 +646,52 @@ d3.tsv("datawifi.tsv", function (error, data) {
     ////////////////////////////////////////// SORTING
 
     d3.select("#none2").on("click", function (d, i) {
-        change(0)
+		currentSorting.wifi = { name: 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")};
+		change("none");
     });
+	
     d3.select("#all2").on("click", function (d, i) {
-        change(1)
+		currentSorting.wifi = { name: 'all', colour: getComputedStyle(document.getElementById('labelall')).getPropertyValue("color")};
+		change("all");
     });
+	
     d3.select("#month2").on("click", function (d, i) {
-        change(2)
+		currentSorting.wifi = { name: 'month', colour: getComputedStyle(document.getElementById('labelmonth')).getPropertyValue("color")};
+		change("month");
     });
+	
     d3.select("#week2").on("click", function (d, i) {
-        change(3)
+		currentSorting.wifi = { name: 'week', colour: getComputedStyle(document.getElementById('labelweek')).getPropertyValue("color")};
+		change("week");
     });
 
     function change(action) {
-
-        // Copy-on-write since tweens are evaluated after a delay.
-        switch (action) {
-        case 0:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return d3.ascending(a.username, b.username);
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 1:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.all - a.all;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 2:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.month - a.month;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 3:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.week - a.week;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        default:
-        }
+	
+		var x0 = x.domain(data.sort(function (a, b) {
+				switch(action)
+				{
+				case "none":
+					return d3.ascending(a.username, b.username);
+					break;
+				case "all":
+					return b.all - a.all;
+					break;
+				case "month":
+					return b.month - a.month;
+					break;
+				case "week":
+					return b.week - a.week;
+					break;
+				}
+			})
+			.map(function (d) {
+				return d.username;
+			}))
+			.copy();
 
         var transition = groups.transition().duration(750),
             delay = function (d, i) {
-                return i * 50;
+                return i * 5;
             };
 
         transition.selectAll("circle.mark")
@@ -665,7 +700,6 @@ d3.tsv("datawifi.tsv", function (error, data) {
                 return x0(d.username) + x.rangeBand() / 2;
             });
     }
-
 });
 
 // LOCATION ////////////////////////////////////
@@ -723,34 +757,64 @@ d3.select("#chartlocation").on("mousedown", function () {
         }
     })
     .on("mouseup", function () {
-        // remove selection frame
         s = chart3.select("rect");
-
-        var rectVal = {
-            left: parseInt(s.attr("x")),
-            right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
-            top: parseInt(s.attr("y")),
-            bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
-        };
-
-        var allPoints = chart3.selectAll("circle.mark").each(function (d) {
-            if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
-                parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
-                d3.select(this).classed("selected", true);
-                chart3.selectAll(".mark").each(function (dd) {
-                    if (d.username == dd.username) {
-                        d3.select(this).classed("selected", true);
-                        if (selectedUsersLocation.indexOf(d.username) < 0) {
-                            var x = document.getElementById("userselectLocation");
-                            var option = document.createElement("option");
-                            option.text = d.username;
-                            x.add(option, x[0]);
-                            selectedUsersLocation.push(d.username);
-                        }
-                    }
-                })
-            }
-        });
+		var rectVal = {
+			left: parseInt(s.attr("x")),
+			right: parseInt(s.attr("x")) + parseInt(s.attr("width")),
+			top: parseInt(s.attr("y")),
+			bottom: parseInt(s.attr("y")) + parseInt(s.attr("height"))
+		};
+				
+		if(rectVal.left > 0) // the selection is in the diagram
+		{
+			// get all points inside selection
+			chart3.selectAll("circle.mark").each(function (d) {
+				// get all nodes inside rectangle
+				if (parseInt(this.cx.baseVal.value) < rectVal.right && parseInt(this.cx.baseVal.value) > rectVal.left &&
+					parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom) {
+					d3.select(this).classed("selected", true);
+					chart3.selectAll(".mark").each(function (dd) {
+						if (d.username == dd.username) {
+							d3.select(this).classed("selected", true);
+							if (selectedUsersLocation.indexOf(d.username) < 0) {
+								var x = document.getElementById("userselectLocation");
+								var option = document.createElement("option");
+								option.text = d.username;
+								x.add(option, x[0]);
+								selectedUsersLocation.push(d.username);
+							}
+						}
+					})
+				}
+			});
+		}
+		else // the selection was on Yaxis
+		{
+			chart3.selectAll("circle.mark").each(function (d) {
+				if (parseInt(this.cy.baseVal.value) > rectVal.top && parseInt(this.cy.baseVal.value) < rectVal.bottom)
+				{
+					// check which sorting is right now
+					// select all nodes with values on Yaxis
+					if(d3.rgb(currentSorting.location.colour).toString() == d3.rgb(getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")).toString() ||
+					   d3.rgb(currentSorting.location.colour).toString() == d3.rgb(this.style.fill).toString())
+					{
+						d3.select(this).classed("selected", true);
+						chart3.selectAll(".mark").each(function (dd) {
+							if (d.username == dd.username) {
+								d3.select(this).classed("selected", true);
+								if (selectedUsersLocation.indexOf(d.username) < 0) {
+									var x = document.getElementById("userselectLocation");
+									var option = document.createElement("option");
+									option.text = d.username;
+									x.add(option, x[0]);
+									selectedUsersLocation.push(d.username);
+								}
+							}
+						})
+					}
+				}
+			})
+		}
         d3.select("rect").remove();
     });
 	
@@ -884,63 +948,52 @@ d3.tsv("datalocation.tsv", function (error, data) {
     ////////////////////////////////////////// SORTING
 
     d3.select("#none3").on("click", function (d, i) {
-        change(0)
+		currentSorting.location = { name: 'none', colour: getComputedStyle(document.getElementById('labelnone')).getPropertyValue("color")};
+		change("none");
     });
+	
     d3.select("#all3").on("click", function (d, i) {
-        change(1)
+		currentSorting.location = { name: 'all', colour: getComputedStyle(document.getElementById('labelall')).getPropertyValue("color")};
+		change("all");
     });
+	
     d3.select("#month3").on("click", function (d, i) {
-        change(2)
+		currentSorting.location = { name: 'month', colour: getComputedStyle(document.getElementById('labelmonth')).getPropertyValue("color")};
+		change("month");
     });
+	
     d3.select("#week3").on("click", function (d, i) {
-        change(3)
+		currentSorting.location = { name: 'week', colour: getComputedStyle(document.getElementById('labelweek')).getPropertyValue("color")};
+		change("week");
     });
 
-    function change(action) {
-
-        switch (action) {
-        case 0:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return d3.ascending(a.username, b.username);
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 1:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.all - a.all;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 2:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.month - a.month;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        case 3:
-            var x0 = x.domain(data.sort(function (a, b) {
-                    return b.week - a.week;
-                })
-                .map(function (d) {
-                    return d.username;
-                }))
-                .copy();
-            break;
-        default:
-        }
+        function change(action) {
+	
+		var x0 = x.domain(data.sort(function (a, b) {
+				switch(action)
+				{
+				case "none":
+					return d3.ascending(a.username, b.username);
+					break;
+				case "all":
+					return b.all - a.all;
+					break;
+				case "month":
+					return b.month - a.month;
+					break;
+				case "week":
+					return b.week - a.week;
+					break;
+				}
+			})
+			.map(function (d) {
+				return d.username;
+			}))
+			.copy();
 
         var transition = groups.transition().duration(750),
             delay = function (d, i) {
-                return i * 50;
+                return i * 5;
             };
 
         transition.selectAll("circle.mark")
@@ -948,18 +1001,5 @@ d3.tsv("datalocation.tsv", function (error, data) {
             .attr("cx", function (d) {
                 return x0(d.username) + x.rangeBand() / 2;
             });
-
-        transition.select(".x.axis")
-            .call(xAxis)
-            .selectAll("g")
-            .delay(delay)
-            .selectAll("text")
-            .style("text-anchor", "end")
-            .attr("dx", "-.8em")
-            .attr("dy", ".15em")
-            .attr("transform", function (d) {
-                return "rotate(-90)"
-            });
     }
-
 });
